@@ -141,6 +141,11 @@ those files or the generated guide. The app rewrites them on start.
   branches become dashes). Use an absolute path or `~` / `~/...`, resolved on the
   space's machine. Read on dialog open; existing checkouts stay put. No clones
   needed, and the app does not read the TUI's config.toml.
+- A repo's committed `.herdr/worktree.json` (`directory`, `setup`, `teardown`)
+  or `worktrees.repos["<main checkout>"]` in settings.json picks that repo's
+  checkout folder (`<directory>/<branch>`, relative to the main checkout) and
+  the `sh` commands New worktree runs in the first terminal and Remove worktree
+  runs before deleting. `worktrees.setup` / `worktrees.teardown` apply to every repo.
 - Mods live in `mods/<name>/` with `main.js` and optional `mod.json`.
   They are trusted JavaScript with command and network access.
   `"focusable": true` in `mod.json` lets `pane.go` move onto a copy; it receives
