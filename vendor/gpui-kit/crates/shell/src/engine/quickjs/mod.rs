@@ -1068,6 +1068,7 @@ impl Drop for NestedFlushGuard<'_> {
 }
 
 mod dock_api;
+mod editor_lsp;
 mod entity_api;
 pub(crate) mod host;
 mod host_modules;
@@ -7307,6 +7308,48 @@ globalThis.__gpui = (() => {
           value: () => __editor_value(handle),
           set_value: (value) => __editor_set_value(handle, String(value)),
           on: (event, handler) => __editor_on(handle, String(event), handler),
+          lsp: (options = {}) => {
+            const handlers = {
+              completion: options.completion,
+              hover: options.hover,
+              definition: options.definition,
+              show_document: options.show_document,
+            };
+            for (const [kind, handler] of Object.entries(handlers)) {
+              if (handler !== undefined && typeof handler !== "function") {
+                throw new TypeError(`lsp(...): ${kind} must be a function`);
+              }
+            }
+            const provided = (kind) => typeof handlers[kind] === "function";
+            const settings = {
+              uri: options.uri === undefined || options.uri === null ? null : String(options.uri),
+              trigger_characters: (options.trigger_characters ?? []).map(String),
+              completion: provided("completion"),
+              hover: provided("hover"),
+              definition: provided("definition"),
+              show_document: provided("show_document"),
+            };
+            __editor_lsp(handle, JSON.stringify(settings), (kind, request, settle, cx) => {
+              if (settle === null) {
+                handlers[kind](request, cx);
+                return;
+              }
+              const fail = (error) => settle(null, String(error?.message ?? error));
+              let answer;
+              try {
+                answer = handlers[kind](request, cx);
+              } catch (error) {
+                fail(error);
+                return;
+              }
+              Promise.resolve(answer).then((value) => settle(JSON.stringify(value ?? null), null), fail);
+            });
+          },
+          set_diagnostics: (diagnostics) =>
+            __editor_set_diagnostics(handle, JSON.stringify(diagnostics ?? [])),
+          apply_edits: (edits) => __editor_apply_edits(handle, JSON.stringify(edits ?? [])),
+          set_highlights: (name, highlights) =>
+            __editor_set_highlights(handle, String(name), JSON.stringify(highlights ?? [])),
           focus: () => __editor_focus(handle),
           release: () => __editor_release(handle),
         };
